@@ -2,102 +2,118 @@ from dash import Dash, dcc, html, Input, Output
 import plotly.express as px
 import pandas as pd
 
-# данные
+# загружаем данные
 df = pd.read_csv(
     "https://raw.githubusercontent.com/plotly/datasets/master/gapminder_unfiltered.csv"
 )
 
-# доступные метрики
 metrics = ["pop", "lifeExp", "gdpPercap"]
 years = sorted(df["year"].unique())
 
 app = Dash(__name__)
 
-# интерфейс
+# layout
 app.layout = html.Div([
 
     html.H1("Gapminder Dashboard", style={"textAlign": "center"}),
 
-    html.Label("Выберите страны"),
-    dcc.Dropdown(
-        options=[{"label": c, "value": c} for c in sorted(df.country.unique())],
-        value=["Germany", "Canada"],
-        multi=True,
-        id="country-dropdown"
-    ),
+    # блок с контролами
+    html.Div([
 
-    html.Label("Метрика для линейного графика"),
-    dcc.Dropdown(
-        options=[{"label": m, "value": m} for m in metrics],
-        value="pop",
-        id="y-axis"
-    ),
+        html.Div([
+            html.Label("Countries"),  # выбор стран
+            dcc.Dropdown(
+                options=[{"label": c, "value": c} for c in sorted(df.country.unique())],
+                value=["Germany", "Canada"],
+                multi=True,
+                id="country-dropdown"
+            ),
 
-    html.Br(),
+            html.Label("Line chart metric"),  # выбор метрики для линейного графика
+            dcc.Dropdown(
+                options=[{"label": m, "value": m} for m in metrics],
+                value="pop",
+                id="y-axis"
+            ),
+        ], style={"width": "30%", "display": "inline-block"}),
 
-    html.Label("X axis"),
-    dcc.Dropdown(
-        options=[{"label": m, "value": m} for m in metrics],
-        value="gdpPercap",
-        id="bubble-x"
-    ),
+        html.Div([
+            html.Label("Bubble X"),  # ось X пузырька
+            dcc.Dropdown(
+                options=[{"label": m, "value": m} for m in metrics],
+                value="gdpPercap",
+                id="bubble-x"
+            ),
 
-    html.Label("Y axis"),
-    dcc.Dropdown(
-        options=[{"label": m, "value": m} for m in metrics],
-        value="lifeExp",
-        id="bubble-y"
-    ),
+            html.Label("Bubble Y"),  # ось Y пузырька
+            dcc.Dropdown(
+                options=[{"label": m, "value": m} for m in metrics],
+                value="lifeExp",
+                id="bubble-y"
+            ),
+        ], style={"width": "30%", "display": "inline-block"}),
 
-    html.Label("Bubble size"),
-    dcc.Dropdown(
-        options=[{"label": m, "value": m} for m in metrics],
-        value="pop",
-        id="bubble-size"
-    ),
+        html.Div([
+            html.Label("Bubble size"),  # размер пузырька
+            dcc.Dropdown(
+                options=[{"label": m, "value": m} for m in metrics],
+                value="pop",
+                id="bubble-size"
+            ),
 
-    html.Label("Выберите год"),
-    dcc.Slider(
-        min=min(years),
-        max=max(years),
-        step=5,
-        value=max(years),
-        marks={str(y): str(y) for y in years},
-        id="year-slider"
-    ),
+            html.Label("Year"),  # выбор года
+            dcc.Slider(
+                min=min(years),
+                max=max(years),
+                step=5,
+                value=max(years),
+                marks={str(y): str(y) for y in years},
+                id="year-slider"
+            ),
+        ], style={"width": "35%", "display": "inline-block"}),
 
-    html.Hr(),
+    ], style={"padding": "20px"}),  # паддинги для блока контролов
 
-    dcc.Graph(id="line-chart"),
-    dcc.Graph(id="bubble-chart"),
-    dcc.Graph(id="top15-chart"),
-    dcc.Graph(id="pie-chart")
+    # первый ряд графиков
+    html.Div([
+
+        html.Div([
+            dcc.Graph(id="line-chart", style={"height": "35vh"})  # линейный график
+        ], style={"width": "50%", "display": "inline-block"}),
+
+        html.Div([
+            dcc.Graph(id="bubble-chart", style={"height": "35vh"})  # пузырьковая диаграмма
+        ], style={"width": "50%", "display": "inline-block"}),
+
+    ]),
+
+    # второй ряд графиков
+    html.Div([
+
+        html.Div([
+            dcc.Graph(id="top15-chart", style={"height": "35vh"})  # топ-15 стран по популяции
+        ], style={"width": "50%", "display": "inline-block"}),
+
+        html.Div([
+            dcc.Graph(id="pie-chart", style={"height": "35vh"})  # круговая диаграмма по континентам
+        ], style={"width": "50%", "display": "inline-block"}),
+
+    ])
 
 ])
 
-
-# линейный график
+# коллбэк для линейного графика
 @app.callback(
     Output("line-chart", "figure"),
     Input("country-dropdown", "value"),
     Input("y-axis", "value")
 )
 def update_line(countries, metric):
-
-    dff = df[df.country.isin(countries)]
-
-    fig = px.line(
-        dff,
-        x="year",
-        y=metric,
-        color="country",
-        title="Сравнение стран"
-    )
-
+    filtered = df[df.country.isin(countries)]
+    fig = px.line(filtered, x="year", y=metric, color="country")
     return fig
 
-
-# пузырьковая диаграмма
+# коллбэк для пузырьковой диаграммы
 @app.callback(
     Output("bubble-chart", "figure"),
     Input("bubble-x", "value"),
@@ -106,64 +122,33 @@ def update_line(countries, metric):
     Input("year-slider", "value")
 )
 def update_bubble(x, y, size, year):
-
-    dff = df[df.year == year]
-
-    fig = px.scatter(
-        dff,
-        x=x,
-        y=y,
-        size=size,
-        color="continent",
-        hover_name="country",
-        size_max=60,
-        title="Bubble chart"
-    )
-
+    filtered = df[df.year == year]
+    fig = px.scatter(filtered, x=x, y=y, size=size, color="continent",
+                     hover_name="country", size_max=60)
     return fig
 
-
-# топ стран по населению
+# коллбэк для топ-15 стран
 @app.callback(
     Output("top15-chart", "figure"),
     Input("year-slider", "value")
 )
-def update_bar(year):
-
-    dff = df[df.year == year]
-
-    top15 = dff.sort_values("pop", ascending=False).head(15)
-
-    fig = px.bar(
-        top15,
-        x="country",
-        y="pop",
-        title="Топ-15 стран по населению"
-    )
-
+def update_top15(year):
+    filtered = df[df.year == year]
+    top15 = filtered.sort_values("pop", ascending=False).head(15)
+    fig = px.bar(top15, x="country", y="pop")
     return fig
 
-
-# круговая диаграмма
+# коллбэк для круговой диаграммы
 @app.callback(
     Output("pie-chart", "figure"),
     Input("year-slider", "value")
 )
 def update_pie(year):
-
-    dff = df[df.year == year]
-
-    cont = dff.groupby("continent")["pop"].sum().reset_index()
-
-    fig = px.pie(
-        cont,
-        values="pop",
-        names="continent",
-        title="Популяция по континентам"
-    )
-
+    filtered = df[df.year == year]
+    continent_pop = filtered.groupby("continent")["pop"].sum().reset_index()
+    fig = px.pie(continent_pop, values="pop", names="continent")
     return fig
 
-
+# запуск приложения
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    app.run(debug=True)
