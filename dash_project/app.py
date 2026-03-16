@@ -11,6 +11,7 @@ metrics = ["pop", "lifeExp", "gdpPercap"]
 years = sorted(df["year"].unique())
 
 app = Dash(__name__)
+server = app.server
 
 # layout
 app.layout = html.Div([
