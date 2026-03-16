@@ -151,5 +151,5 @@ def update_pie(year):
     return fig
 
 # запуск приложения
-# if __name__ == "__main__":
-#     app.run(debug=True)
+if __name__ == "__main__":
+    app.run(debug=True)
